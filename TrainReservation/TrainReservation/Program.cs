@@ -29,6 +29,7 @@
                 await GetBookingId(client);
                 await GetExpress_2000_info(client);
                 await GetLocal_1000_info(client);
+                await ReserveSeat(client);
             }
         }
 
@@ -36,20 +37,18 @@
         {
             var request = new ReserveRequest()
             {
-                booking_reference = "",
-                train_id = "",
+                booking_reference = "75bcd15",
+                train_id = "express_2000",
                 seats = new List<string>(){
                     "1A", "2B"
                 }
             };
 
-            //var requestJson = JsonConvert.SerializeObject(request);
-
             HttpResponseMessage response = await client.PostAsJsonAsync("reserve", request);
 
             if (response.IsSuccessStatusCode)
             {
-                var booking_id = await response.Content.ReadAsAsync<string>();
+                var res = await response.Content.ReadAsAsync<object>();
             }
         }
 
