@@ -1,5 +1,7 @@
 ﻿namespace TrainReservation
 {
+    using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -13,24 +15,108 @@
         private static void Main(string[] args)
         {
             InitAsync().Wait();
+            Console.ReadLine();
         }
 
         private static async Task InitAsync()
         {
             using (var client = new HttpClient())
             {
-                // New code:
                 client.BaseAddress = new Uri("http://localhost:9000/");
                 client.DefaultRequestHeaders.Accept.Clear();
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                HttpResponseMessage response = await client.GetAsync("booking_reference");
+                await GetBookingId(client);
+                await GetExpress_2000_info(client);
+                await GetLocal_1000_info(client);
+            }
+        }
 
-                if (response.IsSuccessStatusCode)
-                {
-                    //var kk = await response.Content.ReadAsAsync()
-                    //Console.WriteLine("{0}\t${1}\t{2}", product.Name, product.Price, product.Category);
+        private static async Task ReserveSeat(HttpClient client)
+        {
+            var request = new ReserveRequest()
+            {
+                booking_reference = "",
+                train_id = "",
+                seats = new List<string>(){
+                    "1A", "2B"
                 }
+            };
+
+            //var requestJson = JsonConvert.SerializeObject(request);
+
+            HttpResponseMessage response = await client.PostAsJsonAsync("reserve", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var booking_id = await response.Content.ReadAsAsync<string>();
+            }
+        }
+
+        private static async Task<Train> GetLocal_1000_info(HttpClient client)
+        {
+            HttpResponseMessage response = await client.GetAsync("data_for_train/local_1000");
+            var train = new Train();
+            train.Seats = new List<Seat>();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var res = response.Content.ReadAsAsync<object>().Result;
+
+                Dictionary<string, JObject> seats = JsonConvert.DeserializeObject<Dictionary<string, JObject>>(res.ToString());
+
+                train.Name = "Local_1000";
+
+                foreach (var seat in seats)
+                {
+                    Dictionary<string, JObject> data = JsonConvert.DeserializeObject<Dictionary<string, JObject>>(seat.Value.ToString());
+                    foreach (var item in data)
+                    {
+                        train.Seats.Add(JsonConvert.DeserializeObject<Seat>(item.Value.ToString()));
+                    }
+                }
+            }
+            return train;
+        }
+
+        /// <summary>
+        /// Gets the express_2000_info.
+        /// </summary>
+        /// <param name="client">The client.</param>
+        /// <returns></returns>
+        private static async Task<Train> GetExpress_2000_info(HttpClient client)
+        {
+            HttpResponseMessage response = await client.GetAsync("data_for_train/express_2000");
+            var train = new Train();
+            train.Seats = new List<Seat>();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var res = response.Content.ReadAsAsync<object>().Result;
+
+                Dictionary<string, JObject> seats = JsonConvert.DeserializeObject<Dictionary<string, JObject>>(res.ToString());
+
+                train.Name = "express_2000";
+
+                foreach (var seat in seats)
+                {
+                    Dictionary<string, JObject> data = JsonConvert.DeserializeObject<Dictionary<string, JObject>>(seat.Value.ToString());
+                    foreach (var item in data)
+                    {
+                        train.Seats.Add(JsonConvert.DeserializeObject<Seat>(item.Value.ToString()));
+                    }
+                }
+            }
+            return train;
+        }
+
+        private static async Task GetBookingId(HttpClient client)
+        {
+            HttpResponseMessage response = await client.GetAsync("booking_reference");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var booking_id = await response.Content.ReadAsAsync<string>();
             }
         }
     }
